@@ -728,6 +728,23 @@ function upsertBlogCategory(PDO $db, string $name, string $slug): int
     return (int) $db->lastInsertId();
 }
 
+/** Adresa unei imagini din biblioteca media WordPress, după identificator. */
+function fetchMediaSourceUrl(string $source, int $mediaId): string
+{
+    static $cache = [];
+
+    if ($mediaId <= 0) {
+        return '';
+    }
+    if (isset($cache[$mediaId])) {
+        return $cache[$mediaId];
+    }
+    $data = httpGetJson($source . '/wp-json/wp/v2/media/' . $mediaId);
+    $url = is_array($data) ? trim((string) ($data['source_url'] ?? '')) : '';
+
+    return $cache[$mediaId] = $url;
+}
+
 /** Prima imagine dintr-un conținut HTML deja localizat (sau '' dacă nu există). */
 function firstContentImage(string $html): string
 {
@@ -1008,8 +1025,16 @@ function migratePostsViaApi(PDO $db, string $source, array $options, array &$rep
             if (is_array($media) && !empty($media['source_url'])) {
                 $featured = localizeImage($db, (string) $media['source_url'], $options, $report, $title);
             }
-            // Multe site-uri nu setează „featured image” în WordPress, iar tema
-            // folosea prima imagine din articol ca miniatură. Facem la fel.
+            // Datele încorporate (`_embed`) nu conțin întotdeauna imaginea, chiar
+            // dacă articolul are una; o cerem atunci direct după identificator.
+            if ($featured === '' && (int) ($post['featured_media'] ?? 0) > 0) {
+                $mediaUrl = fetchMediaSourceUrl($source, (int) $post['featured_media']);
+                if ($mediaUrl !== '') {
+                    $featured = localizeImage($db, $mediaUrl, $options, $report, $title);
+                }
+            }
+            // Ultima rezervă: articolele fără imagine principală, unde tema veche
+            // folosea prima imagine din conținut.
             if ($featured === '') {
                 $featured = firstContentImage($content);
             }
