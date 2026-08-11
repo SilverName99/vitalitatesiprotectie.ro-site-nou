@@ -4144,6 +4144,12 @@ HTML;
                             INNER JOIN blog_tags t ON t.id = pt.tag_id
                             WHERE pt.post_id = p.id AND t.slug = :tag_slug)'
             : '';
+        $catSlug = \App\Support\BlogTags::requestedCategorySlug();
+        $catSql = $catSlug !== ''
+            ? ' AND EXISTS (SELECT 1 FROM blog_post_categories pc
+                            INNER JOIN blog_categories c ON c.id = pc.category_id
+                            WHERE pc.post_id = p.id AND c.slug = :cat_slug)'
+            : '';
         try {
             $stmt = $db->prepare(
                 'SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.reading_minutes, p.published_at,
@@ -4154,12 +4160,15 @@ HTML;
                  WHERE p.deleted_at IS NULL
                    AND p.is_published = 1
                    AND p.published_at <= NOW()'
-                 . $tagSql .
+                 . $tagSql . $catSql .
                 ' ORDER BY p.published_at DESC, p.id DESC
                  LIMIT :limit OFFSET :offset'
             );
             if ($tagSlug !== '') {
                 $stmt->bindValue(':tag_slug', $tagSlug);
+            }
+            if ($catSlug !== '') {
+                $stmt->bindValue(':cat_slug', $catSlug);
             }
             $stmt->bindValue(':limit', $safeLimit, PDO::PARAM_INT);
             $stmt->bindValue(':offset', $safeOffset, PDO::PARAM_INT);
@@ -4191,18 +4200,28 @@ HTML;
         }
         $this->ensureOptionalPageSchema($db);
         $tagSlug = \App\Support\BlogTags::requestedSlug();
+        $catSlug = \App\Support\BlogTags::requestedCategorySlug();
         try {
-            if ($tagSlug !== '') {
-                $stmt = $db->prepare(
-                    'SELECT COUNT(*) FROM blog_posts p
-                     WHERE p.deleted_at IS NULL
-                       AND p.is_published = 1
-                       AND p.published_at <= NOW()
-                       AND EXISTS (SELECT 1 FROM blog_post_tags pt
-                                   INNER JOIN blog_tags t ON t.id = pt.tag_id
-                                   WHERE pt.post_id = p.id AND t.slug = :tag_slug)'
-                );
-                $stmt->execute(['tag_slug' => $tagSlug]);
+            if ($tagSlug !== '' || $catSlug !== '') {
+                $params = [];
+                $sql = 'SELECT COUNT(*) FROM blog_posts p
+                        WHERE p.deleted_at IS NULL
+                          AND p.is_published = 1
+                          AND p.published_at <= NOW()';
+                if ($tagSlug !== '') {
+                    $sql .= ' AND EXISTS (SELECT 1 FROM blog_post_tags pt
+                                          INNER JOIN blog_tags t ON t.id = pt.tag_id
+                                          WHERE pt.post_id = p.id AND t.slug = :tag_slug)';
+                    $params['tag_slug'] = $tagSlug;
+                }
+                if ($catSlug !== '') {
+                    $sql .= ' AND EXISTS (SELECT 1 FROM blog_post_categories pc
+                                          INNER JOIN blog_categories c ON c.id = pc.category_id
+                                          WHERE pc.post_id = p.id AND c.slug = :cat_slug)';
+                    $params['cat_slug'] = $catSlug;
+                }
+                $stmt = $db->prepare($sql);
+                $stmt->execute($params);
                 return max(0, (int) $stmt->fetchColumn());
             }
             $stmt = $db->query(

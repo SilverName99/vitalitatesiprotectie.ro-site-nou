@@ -47,6 +47,13 @@ final class BlogTags
         return (string) preg_replace('~[^a-z0-9\-]~', '', $raw);
     }
 
+    /** Categoria cerută în URL (`?categorie=slug`), normalizată. */
+    public static function requestedCategorySlug(): string
+    {
+        $raw = strtolower(trim((string) ($_GET['categorie'] ?? '')));
+        return (string) preg_replace('~[^a-z0-9\-]~', '', $raw);
+    }
+
     /** @return array<int, array{id:int,name:string,slug:string,posts:int}> */
     public static function all(?PDO $db, int $limit = 60): array
     {
