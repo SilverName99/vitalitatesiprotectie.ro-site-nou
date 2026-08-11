@@ -238,6 +238,9 @@ final class BlogTags
             . '.posts-list{display:flex;flex-direction:column;gap:34px;margin:0 0 30px;}'
             . '.posts-list__item{display:grid;grid-template-columns:300px minmax(0,1fr);'
             . 'gap:28px;align-items:start;}'
+            // Fără imagine, textul ocupă toată lățimea; altfel ar rămâne
+            // strivit în coloana de 300px rezervată imaginii.
+            . '.posts-list__item--no-media{grid-template-columns:1fr;}'
             . '.posts-list__media{display:block;overflow:hidden;border-radius:4px;}'
             . '.posts-list__media img{width:100%;height:auto;display:block;aspect-ratio:4/3;'
             . 'object-fit:cover;transition:transform .35s ease;}'
@@ -327,7 +330,7 @@ final class BlogTags
                 $excerpt = mb_substr($excerpt, 0, 260) . '…';
             }
 
-            $html .= '<article class="posts-list__item">';
+            $html .= '<article class="posts-list__item' . ($image === '' ? ' posts-list__item--no-media' : '') . '">';
             if ($image !== '') {
                 $html .= '<a class="posts-list__media" href="' . $url . '">'
                     . '<img src="' . htmlspecialchars($image, ENT_QUOTES) . '" alt="'
