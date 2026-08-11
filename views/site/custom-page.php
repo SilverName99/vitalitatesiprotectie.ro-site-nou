@@ -120,7 +120,7 @@ if ($showPageSidebar) {
     <aside class="page-sidebar"><?= $pageSidebarHtml ?></aside>
 </div>
 <style>
-    .page-with-sidebar{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:26px;align-items:start;}
+    .page-with-sidebar{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:34px;align-items:start;}
     .page-with-sidebar > .custom-page-content{min-width:0;}
     .page-sidebar{position:sticky;top:20px;}
     .page-sidebar .ps-box{background:#fff;border-radius:10px;padding:20px 24px 8px;margin-bottom:24px;

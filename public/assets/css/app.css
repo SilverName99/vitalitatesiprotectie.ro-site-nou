@@ -34,6 +34,32 @@ body {
     margin: 0 !important;
 }
 
+/* Paginile custom: container centrat, aliniat cu antetul (max 1160px), cu
+   cel puțin 10% spațiu în stânga și în dreapta pe ecrane mai mici. */
+.site-shell .custom-page-content,
+.site-shell .page-with-sidebar {
+    width: min(1160px, 80%);
+    margin: 0 auto;
+    padding: 28px 0 56px;
+    box-sizing: border-box;
+}
+
+/* Când există bară laterală, containerul e wrapper-ul; secțiunea din interior
+   nu-și mai adaugă propriile margini. */
+.site-shell .page-with-sidebar > .custom-page-content {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+@media (max-width: 900px) {
+    .site-shell .custom-page-content,
+    .site-shell .page-with-sidebar {
+        width: min(1160px, 92%);
+        padding: 20px 0 40px;
+    }
+}
+
 /* Legal/info pages: keep content off the screen edges with a centered container. */
 .site-shell .custom-page-content.custom-page--narrow {
     width: min(1100px, 100% - 40px);
