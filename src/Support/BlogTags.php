@@ -144,6 +144,118 @@ final class BlogTags
         return $html . '</ul>';
     }
 
+    /**
+     * Grilă de carduri cu cele mai recente articole: categorie, titlu, rezumat
+     * și link. Folosită prin tokenul {{posts_grid}} sau {{posts_grid:8}}.
+     */
+    public static function renderPostsGrid(?PDO $db, int $limit = 8): string
+    {
+        if (!$db instanceof PDO) {
+            return '';
+        }
+        $limit = max(1, min(24, $limit));
+        try {
+            $stmt = $db->prepare(
+                'SELECT id, title, slug, excerpt, content, category
+                 FROM blog_posts
+                 WHERE deleted_at IS NULL AND is_published = 1 AND published_at <= NOW()
+                 ORDER BY published_at DESC, id DESC
+                 LIMIT :limit'
+            );
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->execute();
+            $posts = $stmt->fetchAll();
+        } catch (Throwable) {
+            return '';
+        }
+        if (!is_array($posts) || $posts === []) {
+            return '';
+        }
+
+        // Categoriile se aduc separat, ca să nu depindem de GROUP BY într-un
+        // SELECT cu coloane neagregate (respinse sub ONLY_FULL_GROUP_BY).
+        $categories = self::categoriesForPosts($db, array_map(
+            static fn (array $p): int => (int) ($p['id'] ?? 0),
+            $posts
+        ));
+
+        $html = '<div class="posts-grid">';
+        foreach ($posts as $post) {
+            $slug = (string) ($post['slug'] ?? '');
+            $title = (string) ($post['title'] ?? '');
+            if ($slug === '' || $title === '') {
+                continue;
+            }
+            $id = (int) ($post['id'] ?? 0);
+            $category = $categories[$id] ?? null;
+            $categoryName = $category['name'] ?? trim((string) ($post['category'] ?? ''));
+
+            $excerpt = trim((string) ($post['excerpt'] ?? ''));
+            if ($excerpt === '') {
+                $excerpt = trim(html_entity_decode(strip_tags((string) ($post['content'] ?? '')), ENT_QUOTES, 'UTF-8'));
+            }
+            if (mb_strlen($excerpt) > 230) {
+                $excerpt = mb_substr($excerpt, 0, 230) . '…';
+            }
+
+            $html .= '<article class="posts-grid__card">';
+            if ($categoryName !== '') {
+                $categoryUrl = isset($category['slug']) && $category['slug'] !== ''
+                    ? '/blog?categorie=' . rawurlencode((string) $category['slug'])
+                    : '';
+                $html .= '<p class="posts-grid__cat">în '
+                    . ($categoryUrl !== ''
+                        ? '<a href="' . $categoryUrl . '">' . htmlspecialchars($categoryName, ENT_QUOTES) . '</a>'
+                        : htmlspecialchars($categoryName, ENT_QUOTES))
+                    . '</p>';
+            }
+            $html .= '<h3 class="posts-grid__title"><a href="/blog/' . rawurlencode($slug) . '">'
+                . htmlspecialchars($title, ENT_QUOTES) . '</a></h3>';
+            if ($excerpt !== '') {
+                $html .= '<p class="posts-grid__excerpt">' . htmlspecialchars($excerpt, ENT_QUOTES) . '</p>';
+            }
+            $html .= '<a class="posts-grid__more" href="/blog/' . rawurlencode($slug) . '">Citește… <span aria-hidden="true">→</span></a>';
+            $html .= '</article>';
+        }
+        return $html . '</div>';
+    }
+
+    /**
+     * Prima categorie a fiecărui articol.
+     *
+     * @param array<int, int> $postIds
+     * @return array<int, array{name:string,slug:string}>
+     */
+    private static function categoriesForPosts(PDO $db, array $postIds): array
+    {
+        $postIds = array_values(array_filter($postIds));
+        if ($postIds === []) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($postIds), '?'));
+        try {
+            $stmt = $db->prepare(
+                'SELECT pc.post_id, c.name, c.slug
+                 FROM blog_post_categories pc
+                 INNER JOIN blog_categories c ON c.id = pc.category_id
+                 WHERE pc.post_id IN (' . $placeholders . ')
+                 ORDER BY pc.post_id, c.name'
+            );
+            $stmt->execute($postIds);
+            $rows = $stmt->fetchAll();
+        } catch (Throwable) {
+            return [];
+        }
+        $map = [];
+        foreach (is_array($rows) ? $rows : [] as $row) {
+            $postId = (int) ($row['post_id'] ?? 0);
+            if ($postId > 0 && !isset($map[$postId])) {
+                $map[$postId] = ['name' => (string) ($row['name'] ?? ''), 'slug' => (string) ($row['slug'] ?? '')];
+            }
+        }
+        return $map;
+    }
+
     /** Numele etichetei active, pentru titluri de tipul „Articole etichetate X”. */
     public static function nameForSlug(?PDO $db, string $slug): string
     {

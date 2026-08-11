@@ -113,6 +113,7 @@ if ($showPageSidebar) {
 }
 ?>
 <?php
+$GLOBALS['__wpMigrationDb'] = $nextEventDb;
 $blogTagsHtml = \App\Support\BlogTags::renderCloud($nextEventDb);
 $recentPostsHtml = \App\Support\BlogTags::renderRecentPosts($nextEventDb, 5);
 foreach (['{{blog_tags}}' => $blogTagsHtml, '{{recent_posts}}' => $recentPostsHtml] as $token => $value) {
@@ -121,6 +122,15 @@ foreach (['{{blog_tags}}' => $blogTagsHtml, '{{recent_posts}}' => $recentPostsHt
         $pageSidebarHtml = str_replace($token, $value, $pageSidebarHtml);
     }
 }
+// {{posts_grid}} sau {{posts_grid:6}} - grila cu cele mai recente articole.
+$pageHtml = (string) preg_replace_callback(
+    '/\{\{\s*posts_grid(?:\s*:\s*(\d+))?\s*\}\}/i',
+    static fn (array $m): string => \App\Support\BlogTags::renderPostsGrid(
+        $GLOBALS['__wpMigrationDb'] ?? null,
+        isset($m[1]) && $m[1] !== '' ? (int) $m[1] : 8
+    ),
+    $pageHtml
+);
 ?>
 <?php if ($showPageSidebar): ?>
 <div class="page-with-sidebar">
