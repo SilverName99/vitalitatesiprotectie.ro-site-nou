@@ -153,6 +153,87 @@
 .wk-scope [wk-scrollspy],
 .wk-scope [wk-scrollspy] > * { opacity:1 !important; transform:none !important; }
 
+/* ===== Carusel (wk-slider) =====
+   În tema veche era un carusel cu JS. Fără el, toate imaginile se afișau una
+   sub alta, la dimensiune maximă, cu buline de listă. Îl transformăm într-un
+   carusel orizontal cu derulare, care funcționează fără JavaScript. */
+.wk-scope .wk-slider,
+.wk-scope .wk-slider-container { position:relative; }
+.wk-scope .wk-slider-items {
+  list-style:none; margin:0; padding:0;
+  display:flex; gap:16px;
+  overflow-x:auto; scroll-snap-type:x mandatory;
+  scroll-behavior:smooth; -webkit-overflow-scrolling:touch;
+}
+.wk-scope .wk-slider-items > * {
+  flex:0 0 100%; min-width:0; scroll-snap-align:center;
+  display:flex; align-items:center; justify-content:center;
+}
+.wk-scope .wk-slider-items > * > img,
+.wk-scope .wk-slider-items img { max-height:420px; width:auto; object-fit:contain; }
+.wk-scope .wk-slider-items::-webkit-scrollbar { height:6px; }
+.wk-scope .wk-slider-items::-webkit-scrollbar-thumb { background:#cfd8d9; border-radius:3px; }
+.wk-scope .wk-slidenav,
+.wk-scope .wk-dotnav { display:none; }
+
+/* Săgețile adăugate de wk-compat.js peste carusel. */
+.wk-scope .wk-compat-slider { position:relative; }
+.wk-scope .wk-compat-slider__nav {
+  position:absolute; top:50%; transform:translateY(-50%);
+  width:40px; height:40px; border-radius:50%; cursor:pointer;
+  border:1px solid var(--wk-line); background:rgba(255,255,255,.92);
+  color:var(--wk-ink); font-size:1.5rem; line-height:1;
+  display:flex; align-items:center; justify-content:center;
+  transition:background .18s, color .18s;
+}
+.wk-scope .wk-compat-slider__nav:hover { background:var(--wk-accent); border-color:var(--wk-accent); color:#fff; }
+.wk-scope .wk-compat-slider__nav--prev { left:6px; }
+.wk-scope .wk-compat-slider__nav--next { right:6px; }
+
+/* ===== Acordeon =====
+   Fără JavaScript conținutul rămâne vizibil (altfel răspunsurile ar dispărea
+   complet). Când wk-compat.js pornește, marchează acordeonul ca interactiv
+   și afișează doar elementul deschis. */
+.wk-scope .wk-accordion,
+.wk-scope .wk-accordion-default { list-style:none; margin:0 0 20px; padding:0; }
+.wk-scope .wk-accordion > li {
+  background:#fff; border:1px solid var(--wk-line); border-radius:10px;
+  margin-bottom:10px; overflow:hidden;
+}
+.wk-scope .wk-accordion-title {
+  display:block; position:relative; margin:0;
+  padding:15px 46px 15px 18px;
+  font-size:1.02rem; font-weight:600; line-height:1.4;
+  color:var(--wk-ink); text-decoration:none; cursor:pointer;
+}
+.wk-scope .wk-accordion-title:hover { color:var(--wk-accent); }
+.wk-scope .wk-accordion.is-interactive .wk-accordion-title::after {
+  content:"+"; position:absolute; right:18px; top:50%; transform:translateY(-50%);
+  font-size:1.3rem; font-weight:400; color:var(--wk-accent); line-height:1;
+}
+.wk-scope .wk-accordion.is-interactive > li.wk-open .wk-accordion-title::after { content:"−"; }
+.wk-scope .wk-accordion-content,
+.wk-scope .wk-accordion-content[hidden] { display:block; padding:0 18px 18px; margin:0; }
+.wk-scope .wk-accordion.is-interactive > li:not(.wk-open) > .wk-accordion-content { display:none; }
+.wk-scope .wk-accordion-content > :first-child { margin-top:0; }
+.wk-scope .wk-accordion-content > :last-child { margin-bottom:0; }
+
+/* ===== Egalizare înălțimi în grilă ===== */
+.wk-scope .wk-grid-match > *,
+.wk-scope .wk-grid-match > * > * { display:flex; flex-direction:column; height:100%; }
+.wk-scope .wk-grid-match > * > * { flex:1; }
+
+/* ===== Efecte la hover ===== */
+.wk-scope .wk-card-hover { transition:transform .18s ease, box-shadow .18s ease; }
+.wk-scope .wk-card-hover:hover { transform:translateY(-3px); box-shadow:0 16px 36px rgba(31,42,46,.12); }
+.wk-scope .wk-transition-scale { transition:transform .35s ease; }
+.wk-scope .wk-transition-toggle:hover .wk-transition-scale { transform:scale(1.05); }
+.wk-scope .wk-transition-spin { transition:transform .5s ease; }
+.wk-scope .wk-transition-toggle:hover .wk-transition-spin { transform:rotate(6deg) scale(1.04); }
+.wk-scope .wk-visible-toggle { position:relative; }
+.wk-scope .wk-visible-toggle .wk-hidden-hover { opacity:0; transition:opacity .18s ease; }
+.wk-scope .wk-visible-toggle:hover .wk-hidden-hover { opacity:1; }
+
 /* ===== Utilitare de așezare ===== */
 .wk-scope .wk-flex { display:flex; }
 .wk-scope .wk-flex-middle { align-items:center; }

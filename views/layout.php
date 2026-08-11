@@ -1715,5 +1715,8 @@ if (trim($designHeaderOutput) !== '' && preg_match($mobileMenuTokenPattern, $des
             });
         })();
     </script>
+    <?php /* Acordeoane și carusele pentru conținutul migrat din WordPress. */ ?>
+    <?php $wkJsVersion = @filemtime(__DIR__ . '/../public/assets/js/wk-compat.js') ?: time(); ?>
+    <script src="/assets/js/wk-compat.js?v=<?= $wkJsVersion ?><?= $assetVersionQuery ?>" defer></script>
 </body>
 </html>
