@@ -179,7 +179,7 @@ final class BlogTags
             $posts
         ));
 
-        $html = '<div class="posts-grid">';
+        $html = self::listStyles() . '<div class="posts-grid">';
         foreach ($posts as $post) {
             $slug = (string) ($post['slug'] ?? '');
             $title = (string) ($post['title'] ?? '');
@@ -218,6 +218,54 @@ final class BlogTags
             $html .= '</article>';
         }
         return $html . '</div>';
+    }
+
+    /**
+     * Stilurile componentelor de listare, emise o singură dată pe pagină.
+     *
+     * Le livrăm împreună cu marcajul, ca tokenul să arate corect fără niciun
+     * pas manual de configurare a CSS-ului.
+     */
+    private static function listStyles(): string
+    {
+        static $emitted = false;
+        if ($emitted) {
+            return '';
+        }
+        $emitted = true;
+
+        return '<style>'
+            . '.posts-list{display:flex;flex-direction:column;gap:34px;margin:0 0 30px;}'
+            . '.posts-list__item{display:grid;grid-template-columns:300px minmax(0,1fr);'
+            . 'gap:28px;align-items:start;}'
+            . '.posts-list__media{display:block;overflow:hidden;border-radius:4px;}'
+            . '.posts-list__media img{width:100%;height:auto;display:block;aspect-ratio:4/3;'
+            . 'object-fit:cover;transition:transform .35s ease;}'
+            . '.posts-list__media:hover img{transform:scale(1.04);}'
+            . '.posts-list__cat{margin:0 0 8px;font-size:.9rem;font-weight:600;}'
+            . '.posts-list__cat a{color:#2f6fb0;text-decoration:none;}'
+            . '.posts-list__cat a:hover{text-decoration:underline;}'
+            . '.posts-list__title{margin:0 0 12px;font-size:1.5rem;font-weight:700;line-height:1.3;}'
+            . '.posts-list__title a{color:#1f2a33;text-decoration:none;}'
+            . '.posts-list__title a:hover{color:#2f6fb0;}'
+            . '.posts-list__excerpt{margin:0;color:#5b6a76;font-size:1rem;line-height:1.7;}'
+            . '.posts-list__empty{color:#7b8794;font-style:italic;}'
+            . '.posts-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:34px 30px;}'
+            . '.posts-grid__card{display:flex;flex-direction:column;}'
+            . '.posts-grid__cat{margin:0 0 6px;color:#7b8794;font-size:.9rem;}'
+            . '.posts-grid__cat a{color:#7b8794;text-decoration:none;}'
+            . '.posts-grid__cat a:hover{color:#2f6fb0;}'
+            . '.posts-grid__title{margin:0 0 10px;font-size:1.3rem;font-weight:700;line-height:1.3;}'
+            . '.posts-grid__title a{color:#1f2a33;text-decoration:none;}'
+            . '.posts-grid__title a:hover{color:#2f6fb0;}'
+            . '.posts-grid__excerpt{margin:0 0 12px;color:#5b6a76;font-size:.96rem;line-height:1.65;flex:1;}'
+            . '.posts-grid__more{color:#2f6fb0;font-size:.95rem;text-decoration:none;}'
+            . '.posts-grid__more:hover{text-decoration:underline;}'
+            . '@media (max-width:820px){'
+            . '.posts-list__item{grid-template-columns:1fr;gap:14px;}'
+            . '.posts-list__title{font-size:1.25rem;}'
+            . '.posts-grid{grid-template-columns:1fr;gap:28px;}}'
+            . '</style>';
     }
 
     /**
@@ -260,7 +308,7 @@ final class BlogTags
             return '<p class="posts-list__empty">Momentan nu sunt articole în această secțiune.</p>';
         }
 
-        $html = '<div class="posts-list">';
+        $html = self::listStyles() . '<div class="posts-list">';
         foreach ($posts as $post) {
             $slug = (string) ($post['slug'] ?? '');
             $title = (string) ($post['title'] ?? '');
