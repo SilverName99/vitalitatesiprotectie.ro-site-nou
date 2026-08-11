@@ -92,10 +92,62 @@ $narrowSlugs = [
 ];
 $pageSlug = trim((string) ($page['slug'] ?? ''), '/');
 $customPageClass = 'custom-page-content' . (in_array($pageSlug, $narrowSlugs, true) ? ' custom-page--narrow' : '');
+
+// Bară laterală configurabilă din Admin -> Setări magazin -> Bară laterală.
+$sidebarSettings = \App\Support\Settings::all($nextEventDb);
+$pageSidebarHtml = trim((string) ($sidebarSettings['page_sidebar_html'] ?? ''));
+$showPageSidebar = (string) ($sidebarSettings['page_sidebar_enabled'] ?? '0') === '1' && $pageSidebarHtml !== '';
+if ($showPageSidebar) {
+    $sidebarSlugs = array_values(array_filter(array_map(
+        static fn (string $slug): string => trim($slug, " \t/"),
+        preg_split('~[\r\n,]+~', (string) ($sidebarSettings['page_sidebar_slugs'] ?? '')) ?: []
+    )));
+    // Listă goală = bara apare pe toate paginile.
+    if ($sidebarSlugs !== [] && !in_array($pageSlug, $sidebarSlugs, true)) {
+        $showPageSidebar = false;
+    }
+}
 ?>
+<?php if ($showPageSidebar): ?>
+<div class="page-with-sidebar">
+    <section class="<?= htmlspecialchars($customPageClass, ENT_QUOTES) ?>">
+        <?= $pageHtml ?>
+    </section>
+    <aside class="page-sidebar"><?= $pageSidebarHtml ?></aside>
+</div>
+<style>
+    .page-with-sidebar{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:26px;align-items:start;}
+    .page-with-sidebar > .custom-page-content{min-width:0;}
+    .page-sidebar{position:sticky;top:20px;}
+    .page-sidebar .ps-box{background:#fff;border-radius:10px;padding:20px 24px 8px;margin-bottom:24px;
+        box-shadow:0 6px 22px rgba(31,42,46,.06);}
+    .page-sidebar .ps-box h3{margin:0 0 6px;font-size:1.3rem;font-weight:600;color:#00a9a5;line-height:1.3;}
+    .page-sidebar .ps-box ul{list-style:none;margin:0;padding:0;}
+    .page-sidebar .ps-box li + li{border-top:1px solid #e8eded;}
+    .page-sidebar .ps-box a{display:block;padding:13px 0;color:#2b3a40;text-decoration:none;
+        font-weight:600;font-size:.95rem;line-height:1.35;transition:color .16s;}
+    .page-sidebar .ps-box a:hover,
+    .page-sidebar .ps-box a.is-current{color:#00a9a5;}
+    @media (max-width:900px){
+        .page-with-sidebar{grid-template-columns:1fr;}
+        .page-sidebar{position:static;}
+    }
+</style>
+<script>
+    /* Evidențiază în bara laterală link-ul paginii curente. */
+    (() => {
+        const here = window.location.pathname.replace(/\/+$/, '') || '/';
+        document.querySelectorAll('.page-sidebar a[href]').forEach((link) => {
+            const target = link.getAttribute('href').replace(/\/+$/, '') || '/';
+            if (target === here) { link.classList.add('is-current'); }
+        });
+    })();
+</script>
+<?php else: ?>
 <section class="<?= htmlspecialchars($customPageClass, ENT_QUOTES) ?>">
     <?= $pageHtml ?>
 </section>
+<?php endif; ?>
 <?php if (trim($pageJs) !== ''): ?>
     <script>
         <?= $pageJs ?>

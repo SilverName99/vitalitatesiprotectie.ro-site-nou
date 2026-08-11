@@ -6046,6 +6046,17 @@ final class AdminController
             return;
         }
 
+        if ($action === 'save_page_sidebar') {
+            Settings::save($db, [
+                'page_sidebar_enabled' => isset($_POST['page_sidebar_enabled']) ? '1' : '0',
+                'page_sidebar_html' => trim((string) ($_POST['page_sidebar_html'] ?? '')),
+                'page_sidebar_slugs' => trim((string) ($_POST['page_sidebar_slugs'] ?? '')),
+            ]);
+            Flash::set('success', 'Setările barei laterale au fost salvate.');
+            header('Location: /admin/settings/store?tab=sidebar');
+            return;
+        }
+
         if ($action === 'save_widgets') {
             Settings::save($db, [
                 'bbd_sidebar_enabled' => isset($_POST['bbd_sidebar_enabled']) ? '1' : '0',

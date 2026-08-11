@@ -21,7 +21,10 @@ $galleryImages = is_array($galleryImages ?? null) ? $galleryImages : [];
         $applyFloatingCart = (string) ($settings['store_quantity_apply_floating_cart'] ?? '0') === '1';
         $applyCartPage = (string) ($settings['store_quantity_apply_cart_page'] ?? '0') === '1';
         $bbdSidebarEnabled = (string) ($settings['bbd_sidebar_enabled'] ?? '1') === '1';
-        $availableStoreTabs = ['pages', 'sitemap', 'branding', 'seo', 'clarity', 'quantity', 'widgets', 'caching'];
+        $pageSidebarEnabled = (string) ($settings['page_sidebar_enabled'] ?? '0') === '1';
+        $pageSidebarHtml = (string) ($settings['page_sidebar_html'] ?? '');
+        $pageSidebarSlugs = (string) ($settings['page_sidebar_slugs'] ?? '');
+        $availableStoreTabs = ['pages', 'sitemap', 'branding', 'seo', 'clarity', 'quantity', 'widgets', 'sidebar', 'caching'];
         $defaultStoreTab = trim((string) ($_GET['tab'] ?? 'pages'));
         if (!in_array($defaultStoreTab, $availableStoreTabs, true)) {
             $defaultStoreTab = 'pages';
@@ -62,6 +65,7 @@ $galleryImages = is_array($galleryImages ?? null) ? $galleryImages : [];
             <button class="btn btn-secondary <?= $defaultStoreTab === 'clarity' ? 'is-active' : '' ?>" type="button" data-store-settings-tab="clarity">Microsoft Clarity</button>
             <button class="btn btn-secondary <?= $defaultStoreTab === 'quantity' ? 'is-active' : '' ?>" type="button" data-store-settings-tab="quantity">Control cantitate</button>
             <button class="btn btn-secondary <?= $defaultStoreTab === 'widgets' ? 'is-active' : '' ?>" type="button" data-store-settings-tab="widgets">Sertar Oferte</button>
+            <button class="btn btn-secondary <?= $defaultStoreTab === 'sidebar' ? 'is-active' : '' ?>" type="button" data-store-settings-tab="sidebar">Bară laterală</button>
             <button class="btn btn-secondary <?= $defaultStoreTab === 'caching' ? 'is-active' : '' ?>" type="button" data-store-settings-tab="caching">Caching</button>
         </div>
 
@@ -257,6 +261,40 @@ $galleryImages = is_array($galleryImages ?? null) ? $galleryImages : [];
                 </label>
                 <div style="margin-top:10px;">
                     <button class="btn" type="submit">Salvează</button>
+                </div>
+            </form>
+        </article>
+
+        <article class="panel store-settings-panel" data-store-settings-panel="sidebar" <?= $defaultStoreTab !== 'sidebar' ? 'hidden' : '' ?> style="margin:12px 0;">
+            <h3 style="margin-top:0;">Bară laterală pentru pagini</h3>
+            <p style="margin:0 0 10px;color:#64748b;">
+                Coloană fixă în dreapta paginilor, cu meniuri sau blocuri de informații.
+                Conținutul de mai jos este HTML și apare identic pe toate paginile selectate.
+                Pe telefon coboară automat sub conținut.
+            </p>
+            <form method="post" action="/admin/settings/store">
+                <input type="hidden" name="action" value="save_page_sidebar">
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                    <input type="checkbox" name="page_sidebar_enabled" value="1" <?= $pageSidebarEnabled ? 'checked' : '' ?>>
+                    Afișează bara laterală
+                </label>
+                <div class="field">
+                    <label for="page_sidebar_slugs">Pe ce pagini apare (un slug pe linie)</label>
+                    <textarea id="page_sidebar_slugs" name="page_sidebar_slugs" rows="5"
+                        placeholder="cmo-easycall&#10;cmo-pczone&#10;tehnologia-cmo"><?= htmlspecialchars($pageSidebarSlugs, ENT_QUOTES) ?></textarea>
+                    <small style="color:#64748b;">Lasă gol pentru toate paginile.</small>
+                </div>
+                <div class="field">
+                    <label for="page_sidebar_html">Conținut HTML</label>
+                    <textarea id="page_sidebar_html" name="page_sidebar_html" rows="14"
+                        style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;"><?= htmlspecialchars($pageSidebarHtml, ENT_QUOTES) ?></textarea>
+                    <small style="color:#64748b;">
+                        Folosește <code>&lt;div class="ps-box"&gt;&lt;h3&gt;Titlu&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;&lt;a href="/slug"&gt;Link&lt;/a&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;</code>
+                        pentru casete stilizate. Pagina curentă se evidențiază automat.
+                    </small>
+                </div>
+                <div style="margin-top:10px;">
+                    <button class="btn" type="submit">Salvează bara laterală</button>
                 </div>
             </form>
         </article>
