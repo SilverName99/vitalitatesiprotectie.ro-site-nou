@@ -195,6 +195,18 @@ function ensureMigrationSchema(PDO $db): void
             KEY idx_blog_posts_published (is_published, published_at),
             KEY idx_blog_posts_deleted (deleted_at)
         )',
+        'CREATE TABLE IF NOT EXISTS blog_tags (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(150) NOT NULL,
+            slug VARCHAR(170) NOT NULL UNIQUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )',
+        'CREATE TABLE IF NOT EXISTS blog_post_tags (
+            post_id INT UNSIGNED NOT NULL,
+            tag_id INT UNSIGNED NOT NULL,
+            PRIMARY KEY (post_id, tag_id),
+            KEY idx_bpt_tag (tag_id)
+        )',
         'CREATE TABLE IF NOT EXISTS blog_post_categories (
             post_id INT UNSIGNED NOT NULL,
             category_id INT UNSIGNED NOT NULL,
@@ -689,6 +701,19 @@ function upsertBlogCategory(PDO $db, string $name, string $slug): int
     return (int) $db->lastInsertId();
 }
 
+function upsertBlogTag(PDO $db, string $name, string $slug): int
+{
+    $stmt = $db->prepare('SELECT id FROM blog_tags WHERE slug = :slug LIMIT 1');
+    $stmt->execute(['slug' => $slug]);
+    $id = $stmt->fetchColumn();
+    if ($id) {
+        return (int) $id;
+    }
+    $db->prepare('INSERT INTO blog_tags (name, slug) VALUES (:name, :slug)')
+        ->execute(['name' => mb_substr($name, 0, 150), 'slug' => mb_substr($slug, 0, 170)]);
+    return (int) $db->lastInsertId();
+}
+
 function upsertBlogAuthor(PDO $db, string $name): int
 {
     $slug = slugify($name);
@@ -753,6 +778,12 @@ function upsertBlogPost(PDO $db, array $options, array &$report, array $post): v
         $link = $db->prepare('INSERT IGNORE INTO blog_post_categories (post_id, category_id) VALUES (:post_id, :category_id)');
         foreach ($post['category_ids'] as $catId) {
             $link->execute(['post_id' => $id, 'category_id' => $catId]);
+        }
+    }
+    if (!empty($post['tag_ids'])) {
+        $linkTag = $db->prepare('INSERT IGNORE INTO blog_post_tags (post_id, tag_id) VALUES (:post_id, :tag_id)');
+        foreach ($post['tag_ids'] as $tagId) {
+            $linkTag->execute(['post_id' => $id, 'tag_id' => $tagId]);
         }
     }
 }
@@ -886,6 +917,20 @@ function migratePostsViaApi(PDO $db, string $source, array $options, array &$rep
     }
     echo '   ' . count($wpCatMap) . " categorii blog sincronizate.\n";
 
+    // Etichetele (tags) WordPress -> blog_tags
+    $wpTagMap = [];
+    foreach (fetchAllPaginated($source . '/wp-json/wp/v2/tags', 0) as $tag) {
+        $name = cleanText((string) ($tag['name'] ?? ''));
+        $slug = (string) ($tag['slug'] ?? '');
+        if ($name === '' || $slug === '') {
+            continue;
+        }
+        if (!$options['dry_run']) {
+            $wpTagMap[(int) ($tag['id'] ?? 0)] = upsertBlogTag($db, $name, $slug);
+        }
+    }
+    echo '   ' . count($wpTagMap) . " etichete sincronizate.\n";
+
     $posts = fetchAllPaginated($source . '/wp-json/wp/v2/posts?status=publish&_embed=1', $options['limit']);
     echo '   ' . count($posts) . " articole găsite.\n";
 
@@ -938,6 +983,10 @@ function migratePostsViaApi(PDO $db, string $source, array $options, array &$rep
                 'category' => $categoryNames[0] ?? '',
                 'category_id' => $categoryIds[0] ?? 0,
                 'category_ids' => $categoryIds,
+                'tag_ids' => array_values(array_filter(array_map(
+                    static fn ($wpTagId) => $wpTagMap[(int) $wpTagId] ?? 0,
+                    (array) ($post['tags'] ?? [])
+                ))),
                 'content' => $content,
                 'published_at' => $publishedAt,
                 'author_id' => $authorId,

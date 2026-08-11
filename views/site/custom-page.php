@@ -112,6 +112,16 @@ if ($showPageSidebar) {
     }
 }
 ?>
+<?php
+$blogTagsHtml = \App\Support\BlogTags::renderCloud($nextEventDb);
+$recentPostsHtml = \App\Support\BlogTags::renderRecentPosts($nextEventDb, 5);
+foreach (['{{blog_tags}}' => $blogTagsHtml, '{{recent_posts}}' => $recentPostsHtml] as $token => $value) {
+    $pageHtml = str_replace($token, $value, $pageHtml);
+    if (isset($pageSidebarHtml)) {
+        $pageSidebarHtml = str_replace($token, $value, $pageSidebarHtml);
+    }
+}
+?>
 <?php if ($showPageSidebar): ?>
 <div class="page-with-sidebar">
     <section class="<?= htmlspecialchars($customPageClass, ENT_QUOTES) ?>">
@@ -132,6 +142,17 @@ if ($showPageSidebar) {
         font-weight:600;font-size:.95rem;line-height:1.35;transition:color .16s;}
     .page-sidebar .ps-box a:hover,
     .page-sidebar .ps-box a.is-current{color:#00a9a5;}
+    .page-sidebar .blog-tags{display:flex;flex-wrap:wrap;gap:8px;padding:4px 0 16px;}
+    .page-sidebar .blog-tags__item{display:inline-block;padding:7px 12px;border-radius:4px;
+        background:#3a4145;color:#f1f4f4;font-size:.83rem;font-weight:500;line-height:1.2;
+        text-decoration:none;transition:background .16s;}
+    .page-sidebar .blog-tags__item:hover{background:#00a9a5;}
+    .page-sidebar .blog-tags__item.is-active{background:#00a9a5;}
+    .page-sidebar .blog-recent{list-style:none;margin:0;padding:0;}
+    .page-sidebar .blog-recent li + li{border-top:1px solid #e8eded;}
+    .page-sidebar .blog-recent a{display:block;padding:11px 0;color:#2b3a40;
+        font-size:.93rem;font-weight:500;line-height:1.4;text-decoration:none;transition:color .16s;}
+    .page-sidebar .blog-recent a:hover{color:#00a9a5;}
     @media (max-width:900px){
         .page-with-sidebar{grid-template-columns:1fr;}
         .page-sidebar{position:static;}

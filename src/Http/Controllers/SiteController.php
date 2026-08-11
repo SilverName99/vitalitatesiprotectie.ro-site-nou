@@ -4138,6 +4138,12 @@ HTML;
         $this->ensureOptionalPageSchema($db);
         $safeLimit = max(1, min(60, $limit));
         $safeOffset = max(0, $offset);
+        $tagSlug = \App\Support\BlogTags::requestedSlug();
+        $tagSql = $tagSlug !== ''
+            ? ' AND EXISTS (SELECT 1 FROM blog_post_tags pt
+                            INNER JOIN blog_tags t ON t.id = pt.tag_id
+                            WHERE pt.post_id = p.id AND t.slug = :tag_slug)'
+            : '';
         try {
             $stmt = $db->prepare(
                 'SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.reading_minutes, p.published_at,
@@ -4147,10 +4153,14 @@ HTML;
                  LEFT JOIN blog_authors a ON a.id = p.author_id
                  WHERE p.deleted_at IS NULL
                    AND p.is_published = 1
-                   AND p.published_at <= NOW()
-                 ORDER BY p.published_at DESC, p.id DESC
+                   AND p.published_at <= NOW()'
+                 . $tagSql .
+                ' ORDER BY p.published_at DESC, p.id DESC
                  LIMIT :limit OFFSET :offset'
             );
+            if ($tagSlug !== '') {
+                $stmt->bindValue(':tag_slug', $tagSlug);
+            }
             $stmt->bindValue(':limit', $safeLimit, PDO::PARAM_INT);
             $stmt->bindValue(':offset', $safeOffset, PDO::PARAM_INT);
             $stmt->execute();
@@ -4180,7 +4190,21 @@ HTML;
             return 0;
         }
         $this->ensureOptionalPageSchema($db);
+        $tagSlug = \App\Support\BlogTags::requestedSlug();
         try {
+            if ($tagSlug !== '') {
+                $stmt = $db->prepare(
+                    'SELECT COUNT(*) FROM blog_posts p
+                     WHERE p.deleted_at IS NULL
+                       AND p.is_published = 1
+                       AND p.published_at <= NOW()
+                       AND EXISTS (SELECT 1 FROM blog_post_tags pt
+                                   INNER JOIN blog_tags t ON t.id = pt.tag_id
+                                   WHERE pt.post_id = p.id AND t.slug = :tag_slug)'
+                );
+                $stmt->execute(['tag_slug' => $tagSlug]);
+                return max(0, (int) $stmt->fetchColumn());
+            }
             $stmt = $db->query(
                 'SELECT COUNT(*) FROM blog_posts p
                  WHERE p.deleted_at IS NULL
