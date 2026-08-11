@@ -375,6 +375,68 @@ function slugify(string $text): string
     return trim($text, '-') ?: 'element-' . substr(md5($text), 0, 8);
 }
 
+/** Normalizează segmentele `.` și `..` dintr-o cale de URL. */
+function normalizeUrlPath(string $path): string
+{
+    $out = [];
+    foreach (explode('/', $path) as $segment) {
+        if ($segment === '' || $segment === '.') {
+            continue;
+        }
+        if ($segment === '..') {
+            array_pop($out);
+            continue;
+        }
+        $out[] = $segment;
+    }
+    return '/' . implode('/', $out);
+}
+
+/**
+ * Transformă orice formă de adresă (relativă, protocol-relativă, cu `../`)
+ * într-un URL absolut valid pe site-ul sursă.
+ */
+function absolutizeUrl(string $src, string $host): string
+{
+    $src = trim(html_entity_decode($src, ENT_QUOTES));
+    if ($src === '' || str_starts_with($src, 'data:') || str_starts_with($src, 'mailto:')) {
+        return $src;
+    }
+    if (str_starts_with($src, '//')) {
+        $src = 'https:' . $src;
+    }
+
+    $scheme = 'https';
+    $targetHost = $host;
+    $rest = $src;
+
+    if (preg_match('~^(https?)://([^/?#]+)(.*)$~i', $src, $m)) {
+        $scheme = strtolower($m[1]);
+        $targetHost = $m[2];
+        $rest = $m[3] !== '' ? $m[3] : '/';
+    }
+
+    $query = '';
+    if (str_contains($rest, '?')) {
+        [$rest, $queryPart] = explode('?', $rest, 2);
+        $query = '?' . $queryPart;
+    }
+    if (str_contains($rest, '#')) {
+        [$rest] = explode('#', $rest, 2);
+    }
+
+    $path = normalizeUrlPath($rest);
+
+    // Pe WordPress `wp-content` stă întotdeauna în rădăcină; dacă a rămas
+    // îngropat sub alt segment (ex. /cmo/wp-content/...), tăiem prefixul.
+    $pos = strpos($path, '/wp-content/');
+    if ($pos !== false && $pos > 0) {
+        $path = substr($path, $pos);
+    }
+
+    return $scheme . '://' . $targetHost . $path . $query;
+}
+
 function cleanText(string $html): string
 {
     return trim(html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
@@ -393,15 +455,14 @@ function readingMinutes(string $html): int
  */
 function localizeImage(PDO $db, string $url, array $options, array &$report, string $altText = ''): string
 {
+    global $sourceHost;
     static $cache = [];
 
     $url = html_entity_decode(trim($url), ENT_QUOTES);
     if ($url === '' || str_starts_with($url, 'data:')) {
         return $url;
     }
-    if (str_starts_with($url, '//')) {
-        $url = 'https:' . $url;
-    }
+    $url = absolutizeUrl($url, (string) $sourceHost);
     if ($options['skip_images'] || $options['dry_run']) {
         return $url;
     }
@@ -479,13 +540,14 @@ function localizeContentImages(PDO $db, string $html, string $sourceHost, array 
     return (string) preg_replace_callback(
         '~(<img[^>]+src=")([^"]+)(")~i',
         static function (array $m) use ($db, $sourceHost, $options, &$report): string {
-            $src = $m[2];
-            $host = (string) parse_url(str_starts_with($src, '//') ? 'https:' . $src : $src, PHP_URL_HOST);
+            // Acceptă orice formă: absolută, `/root`, `relativa/`, `../parinte/`.
+            $src = absolutizeUrl($m[2], $sourceHost);
+            if ($src === '' || str_starts_with($src, 'data:')) {
+                return $m[0];
+            }
+            $host = (string) parse_url($src, PHP_URL_HOST);
             if ($host !== '' && $host !== $sourceHost && !str_ends_with($host, '.' . $sourceHost)) {
                 return $m[0]; // imagine externă (CDN terț etc.) - o lăsăm
-            }
-            if ($host === '' && str_starts_with($src, '/')) {
-                $src = 'https://' . $sourceHost . $src;
             }
             return $m[1] . localizeImage($db, $src, $options, $report) . $m[3];
         },
