@@ -221,6 +221,86 @@ final class BlogTags
     }
 
     /**
+     * Listă de articole dintr-o categorie: imagine în stânga, text în dreapta.
+     * Folosită prin tokenul {{category_list:nutritie}} sau
+     * {{category_list:nutritie:20}} pe paginile de secțiune.
+     */
+    public static function renderCategoryList(?PDO $db, string $categorySlug, int $limit = 20): string
+    {
+        if (!$db instanceof PDO) {
+            return '';
+        }
+        // Slug malformat: refuzat, nu „curățat” tăcut într-altul valid.
+        $raw = strtolower(trim($categorySlug));
+        $categorySlug = (string) preg_replace('~[^a-z0-9\-]~', '', $raw);
+        if ($categorySlug === '' || $categorySlug !== $raw) {
+            return '';
+        }
+        $limit = max(1, min(60, $limit));
+
+        try {
+            $stmt = $db->prepare(
+                'SELECT p.title, p.slug, p.excerpt, p.content, p.featured_image_url, c.name AS category_name
+                 FROM blog_posts p
+                 INNER JOIN blog_post_categories pc ON pc.post_id = p.id
+                 INNER JOIN blog_categories c ON c.id = pc.category_id
+                 WHERE c.slug = :slug
+                   AND p.deleted_at IS NULL AND p.is_published = 1 AND p.published_at <= NOW()
+                 ORDER BY p.published_at DESC, p.id DESC
+                 LIMIT :limit'
+            );
+            $stmt->bindValue(':slug', $categorySlug);
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->execute();
+            $posts = $stmt->fetchAll();
+        } catch (Throwable) {
+            return '';
+        }
+        if (!is_array($posts) || $posts === []) {
+            return '<p class="posts-list__empty">Momentan nu sunt articole în această secțiune.</p>';
+        }
+
+        $html = '<div class="posts-list">';
+        foreach ($posts as $post) {
+            $slug = (string) ($post['slug'] ?? '');
+            $title = (string) ($post['title'] ?? '');
+            if ($slug === '' || $title === '') {
+                continue;
+            }
+            $url = '/blog/' . rawurlencode($slug);
+            $image = trim((string) ($post['featured_image_url'] ?? ''));
+            $categoryName = trim((string) ($post['category_name'] ?? ''));
+
+            $excerpt = trim((string) ($post['excerpt'] ?? ''));
+            if ($excerpt === '') {
+                $excerpt = trim(html_entity_decode(strip_tags((string) ($post['content'] ?? '')), ENT_QUOTES, 'UTF-8'));
+            }
+            if (mb_strlen($excerpt) > 260) {
+                $excerpt = mb_substr($excerpt, 0, 260) . '…';
+            }
+
+            $html .= '<article class="posts-list__item">';
+            if ($image !== '') {
+                $html .= '<a class="posts-list__media" href="' . $url . '">'
+                    . '<img src="' . htmlspecialchars($image, ENT_QUOTES) . '" alt="'
+                    . htmlspecialchars($title, ENT_QUOTES) . '" loading="lazy"></a>';
+            }
+            $html .= '<div class="posts-list__body">';
+            if ($categoryName !== '') {
+                $html .= '<p class="posts-list__cat"><a href="/blog?categorie=' . rawurlencode($categorySlug) . '">'
+                    . htmlspecialchars($categoryName, ENT_QUOTES) . '</a></p>';
+            }
+            $html .= '<h2 class="posts-list__title"><a href="' . $url . '">'
+                . htmlspecialchars($title, ENT_QUOTES) . '</a></h2>';
+            if ($excerpt !== '') {
+                $html .= '<p class="posts-list__excerpt">' . htmlspecialchars($excerpt, ENT_QUOTES) . '</p>';
+            }
+            $html .= '</div></article>';
+        }
+        return $html . '</div>';
+    }
+
+    /**
      * Prima categorie a fiecărui articol.
      *
      * @param array<int, int> $postIds

@@ -122,6 +122,18 @@ foreach (['{{blog_tags}}' => $blogTagsHtml, '{{recent_posts}}' => $recentPostsHt
         $pageSidebarHtml = str_replace($token, $value, $pageSidebarHtml);
     }
 }
+// {{category_list:nutritie}} sau {{category_list:nutritie:20}} - lista de
+// articole dintr-o categorie, cu imaginea în stânga.
+$pageHtml = (string) preg_replace_callback(
+    '/\{\{\s*category_list\s*:\s*([a-z0-9\-]+)(?:\s*:\s*(\d+))?\s*\}\}/i',
+    static fn (array $m): string => \App\Support\BlogTags::renderCategoryList(
+        $GLOBALS['__wpMigrationDb'] ?? null,
+        (string) ($m[1] ?? ''),
+        isset($m[2]) && $m[2] !== '' ? (int) $m[2] : 20
+    ),
+    $pageHtml
+);
+
 // {{posts_grid}} sau {{posts_grid:6}} - grila cu cele mai recente articole.
 $pageHtml = (string) preg_replace_callback(
     '/\{\{\s*posts_grid(?:\s*:\s*(\d+))?\s*\}\}/i',
