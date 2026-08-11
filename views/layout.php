@@ -133,6 +133,7 @@ $floatingCartConfig = [
     ) ? 1 : 0,
 ];
 $bbdSidebarOffers = \App\Support\BbdSidebarOffers::load($db, 10);
+$bbdSidebarEnabled = (string) ($designSettings['bbd_sidebar_enabled'] ?? '1') === '1';
 $siteFaviconUrl = trim((string) ($designSettings['store_favicon_url'] ?? ''));
 if ($siteFaviconUrl === '') {
     $siteFaviconUrl = '/assets/img/product-placeholder.svg';
@@ -864,7 +865,7 @@ if (trim($designHeaderOutput) !== '' && preg_match($mobileMenuTokenPattern, $des
     <?php /* Sertarul de oferte apare doar când există efectiv oferte active;
              altfel afișa un panou gol pe fiecare pagină, inclusiv pe site-urile
              de prezentare care nu folosesc magazinul. */ ?>
-    <?php if ($bbdSidebarOffers !== []): ?>
+    <?php if ($bbdSidebarEnabled && $bbdSidebarOffers !== []): ?>
     <aside class="bv-bbd-sidebar" data-bv-bbd-sidebar>
         <button
             class="bv-bbd-sidebar__handle"

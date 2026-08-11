@@ -142,6 +142,7 @@ final class Settings
         'store_quantity_apply_product_template' => '0',
         'store_quantity_apply_floating_cart' => '0',
         'store_quantity_apply_cart_page' => '0',
+        'bbd_sidebar_enabled' => '1',
         'store_favicon_url' => '',
         'store_seo_home_title' => '',
         'store_seo_home_description' => '',

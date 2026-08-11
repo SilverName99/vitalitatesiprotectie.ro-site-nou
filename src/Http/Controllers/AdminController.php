@@ -6046,6 +6046,15 @@ final class AdminController
             return;
         }
 
+        if ($action === 'save_widgets') {
+            Settings::save($db, [
+                'bbd_sidebar_enabled' => isset($_POST['bbd_sidebar_enabled']) ? '1' : '0',
+            ]);
+            Flash::set('success', 'Setările pentru sertarul „Oferte” au fost salvate.');
+            header('Location: /admin/settings/store?tab=widgets');
+            return;
+        }
+
         $quantityStyle = in_array((string) ($_POST['store_quantity_control_style'] ?? 'default'), ['default', 'stepper'], true)
             ? (string) ($_POST['store_quantity_control_style'] ?? 'default')
             : 'default';
