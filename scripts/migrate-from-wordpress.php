@@ -394,9 +394,15 @@ function normalizeUrlPath(string $path): string
 
 /**
  * Transformă orice formă de adresă (relativă, protocol-relativă, cu `../`)
- * într-un URL absolut valid pe site-ul sursă.
+ * într-un URL absolut valid.
+ *
+ * @param string $baseUrl Adresa paginii care conține imaginea. Adresele
+ *                        relative se rezolvă față de directorul ei (RFC 3986):
+ *                        pe un WordPress instalat în subdirector,
+ *                        `../wp-content/x.jpg` dintr-o pagină `/cmo/ceva/`
+ *                        înseamnă `/cmo/wp-content/x.jpg`, NU `/wp-content/x.jpg`.
  */
-function absolutizeUrl(string $src, string $host): string
+function absolutizeUrl(string $src, string $host, string $baseUrl = ''): string
 {
     $src = trim(html_entity_decode($src, ENT_QUOTES));
     if ($src === '' || str_starts_with($src, 'data:') || str_starts_with($src, 'mailto:')) {
@@ -409,11 +415,13 @@ function absolutizeUrl(string $src, string $host): string
     $scheme = 'https';
     $targetHost = $host;
     $rest = $src;
+    $isAbsolute = false;
 
     if (preg_match('~^(https?)://([^/?#]+)(.*)$~i', $src, $m)) {
         $scheme = strtolower($m[1]);
         $targetHost = $m[2];
         $rest = $m[3] !== '' ? $m[3] : '/';
+        $isAbsolute = true;
     }
 
     $query = '';
@@ -425,16 +433,73 @@ function absolutizeUrl(string $src, string $host): string
         [$rest] = explode('#', $rest, 2);
     }
 
-    $path = normalizeUrlPath($rest);
-
-    // Pe WordPress `wp-content` stă întotdeauna în rădăcină; dacă a rămas
-    // îngropat sub alt segment (ex. /cmo/wp-content/...), tăiem prefixul.
-    $pos = strpos($path, '/wp-content/');
-    if ($pos !== false && $pos > 0) {
-        $path = substr($path, $pos);
+    if (!$isAbsolute && !str_starts_with($rest, '/')) {
+        $baseDir = '/';
+        if ($baseUrl !== '') {
+            $basePath = (string) parse_url($baseUrl, PHP_URL_PATH);
+            if ($basePath !== '' && $basePath !== '/') {
+                if (str_ends_with($basePath, '/')) {
+                    $baseDir = $basePath;
+                } else {
+                    $slash = strrpos($basePath, '/');
+                    $baseDir = $slash === false ? '/' : substr($basePath, 0, $slash + 1);
+                }
+            }
+            $baseHost = (string) parse_url($baseUrl, PHP_URL_HOST);
+            if ($baseHost !== '') {
+                $targetHost = $baseHost;
+            }
+        }
+        $rest = $baseDir . $rest;
     }
 
-    return $scheme . '://' . $targetHost . $path . $query;
+    return $scheme . '://' . $targetHost . normalizeUrlPath($rest) . $query;
+}
+
+/**
+ * Variante alternative de încercat când adresa principală dă 404, pentru
+ * site-uri unde `wp-content` stă în subdirector (sau invers). Prefixul
+ * descoperit la prima descărcare reușită este reținut și reutilizat.
+ */
+function alternateImageUrls(string $url): array
+{
+    global $wpContentPrefix;
+
+    $parts = parse_url($url);
+    if (!is_array($parts) || !isset($parts['path'])) {
+        return [];
+    }
+    $prefix = ($parts['scheme'] ?? 'https') . '://' . ($parts['host'] ?? '');
+    $path = (string) $parts['path'];
+    $query = isset($parts['query']) ? '?' . $parts['query'] : '';
+
+    $pos = strpos($path, '/wp-content/');
+    if ($pos === false) {
+        return [];
+    }
+    $tail = substr($path, $pos);              // /wp-content/uploads/...
+    $currentPrefix = substr($path, 0, $pos);  // '' sau /cmo, /blog etc.
+
+    $alternates = [];
+    if (is_string($wpContentPrefix) && $wpContentPrefix !== '' && $wpContentPrefix !== $currentPrefix) {
+        $alternates[] = $prefix . $wpContentPrefix . $tail . $query;
+    }
+    if ($currentPrefix !== '') {
+        $alternates[] = $prefix . $tail . $query;
+    }
+    return $alternates;
+}
+
+/** Reține subdirectorul în care stă efectiv `wp-content` pe site-ul sursă. */
+function rememberWpContentPrefix(string $url): void
+{
+    global $wpContentPrefix;
+
+    $path = (string) parse_url($url, PHP_URL_PATH);
+    $pos = strpos($path, '/wp-content/');
+    if ($pos !== false && $pos > 0) {
+        $wpContentPrefix = substr($path, 0, $pos);
+    }
 }
 
 function cleanText(string $html): string
@@ -493,11 +558,29 @@ function localizeImage(PDO $db, string $url, array $options, array &$report, str
     if (!is_file($target)) {
         $status = 0;
         $data = httpGet($url, 60, 3, $status);
+
+        // Unele site-uri țin `wp-content` în subdirector (sau invers) față de
+        // ce indică adresa din conținut; încercăm variantele alternative.
+        $fetchedFrom = $url;
+        if (($data === null || $data === '') && $status === 404) {
+            foreach (alternateImageUrls($url) as $alternate) {
+                $altStatus = 0;
+                $altData = httpGet($alternate, 60, 2, $altStatus);
+                if (is_string($altData) && $altData !== '') {
+                    $data = $altData;
+                    $status = $altStatus;
+                    $fetchedFrom = $alternate;
+                    break;
+                }
+            }
+        }
+
         if ($data === null || $data === '') {
             $report['images']['errors']++;
             logImageFailure($url, $status);
             return $cache[$url] = $url;
         }
+        rememberWpContentPrefix($fetchedFrom);
         if (file_put_contents($target, $data) === false) {
             $report['images']['errors']++;
             logImageFailure($url, -1);
@@ -530,18 +613,29 @@ function localizeImage(PDO $db, string $url, array $options, array &$report, str
     return $cache[$url] = $localUrl;
 }
 
-/** Rescrie toate <img> din conținut către copii locale + curăță srcset. */
-function localizeContentImages(PDO $db, string $html, string $sourceHost, array $options, array &$report): string
-{
+/**
+ * Rescrie toate <img> din conținut către copii locale + curăță srcset.
+ *
+ * @param string $baseUrl Adresa paginii sursă, pentru rezolvarea corectă a
+ *                        adreselor relative din conținut.
+ */
+function localizeContentImages(
+    PDO $db,
+    string $html,
+    string $sourceHost,
+    array $options,
+    array &$report,
+    string $baseUrl = ''
+): string {
     if (trim($html) === '') {
         return $html;
     }
     $html = (string) preg_replace('~\s+(srcset|sizes)="[^"]*"~i', '', $html);
     return (string) preg_replace_callback(
         '~(<img[^>]+src=")([^"]+)(")~i',
-        static function (array $m) use ($db, $sourceHost, $options, &$report): string {
+        static function (array $m) use ($db, $sourceHost, $options, &$report, $baseUrl): string {
             // Acceptă orice formă: absolută, `/root`, `relativa/`, `../parinte/`.
-            $src = absolutizeUrl($m[2], $sourceHost);
+            $src = absolutizeUrl($m[2], $sourceHost, $baseUrl);
             if ($src === '' || str_starts_with($src, 'data:')) {
                 return $m[0];
             }
@@ -756,7 +850,14 @@ function migratePagesViaApi(PDO $db, string $source, array $options, array &$rep
                 $report['pages']['skipped']++;
                 continue;
             }
-            $content = localizeContentImages($db, $content, $sourceHost, $options, $report);
+            $content = localizeContentImages(
+                $db,
+                $content,
+                $sourceHost,
+                $options,
+                $report,
+                (string) ($page['link'] ?? '')
+            );
             upsertPage($db, $options, $report, $title, $slug, $content);
         } catch (Throwable $e) {
             $report['pages']['errors']++;
@@ -801,7 +902,8 @@ function migratePostsViaApi(PDO $db, string $source, array $options, array &$rep
                 (string) ($post['content']['rendered'] ?? ''),
                 $sourceHost,
                 $options,
-                $report
+                $report,
+                (string) ($post['link'] ?? '')
             );
 
             $authorId = 0;
@@ -939,8 +1041,8 @@ function importWcV3Product(PDO $db, array $options, array &$report, array $p): v
             'category' => $catName,
             'category_id' => $catId,
             'slug' => $slug,
-            'short_description' => localizeContentImages($db, (string) ($p['short_description'] ?? ''), $sourceHost, $options, $report),
-            'description' => localizeContentImages($db, (string) ($p['description'] ?? ''), $sourceHost, $options, $report),
+            'short_description' => localizeContentImages($db, (string) ($p['short_description'] ?? ''), $sourceHost, $options, $report, (string) ($p['permalink'] ?? '')),
+            'description' => localizeContentImages($db, (string) ($p['description'] ?? ''), $sourceHost, $options, $report, (string) ($p['permalink'] ?? '')),
             'price' => $regular,
             'sale_price' => $sale,
             'stock' => $stock,
@@ -1015,8 +1117,8 @@ function importStoreApiProduct(PDO $db, array $options, array &$report, array $p
             'category' => $catName,
             'category_id' => $catId,
             'slug' => $slug,
-            'short_description' => localizeContentImages($db, (string) ($p['short_description'] ?? ''), $sourceHost, $options, $report),
-            'description' => localizeContentImages($db, (string) ($p['description'] ?? ''), $sourceHost, $options, $report),
+            'short_description' => localizeContentImages($db, (string) ($p['short_description'] ?? ''), $sourceHost, $options, $report, (string) ($p['permalink'] ?? '')),
+            'description' => localizeContentImages($db, (string) ($p['description'] ?? ''), $sourceHost, $options, $report, (string) ($p['permalink'] ?? '')),
             'price' => $regular > 0 ? $regular : $current,
             'sale_price' => $sale,
             // Store API nu expune stocul numeric; punem 100 dacă e pe stoc (ajustezi din admin).
@@ -1222,7 +1324,7 @@ function migrateViaCrawl(PDO $db, string $source, array $options, array &$report
                 }
                 $image = $imageRaw !== '' ? localizeImage($db, (string) $imageRaw, $options, $report, $title) : '';
                 $description = extractMainContent($html);
-                $description = localizeContentImages($db, $description, $sourceHost, $options, $report);
+                $description = localizeContentImages($db, $description, $sourceHost, $options, $report, (string) $url);
 
                 upsertProduct($db, $options, $report, [
                     'name' => cleanText((string) ($ld['name'] ?? $title)),
@@ -1241,7 +1343,7 @@ function migrateViaCrawl(PDO $db, string $source, array $options, array &$report
                 ]);
             } elseif ($wantedType === 'posts') {
                 $ld = extractJsonLd($html, 'BlogPosting') ?? extractJsonLd($html, 'Article') ?? [];
-                $content = localizeContentImages($db, extractMainContent($html), $sourceHost, $options, $report);
+                $content = localizeContentImages($db, extractMainContent($html), $sourceHost, $options, $report, (string) $url);
                 if ($content === '') {
                     $report['posts']['skipped']++;
                     continue;
@@ -1273,7 +1375,7 @@ function migrateViaCrawl(PDO $db, string $source, array $options, array &$report
                     'featured_image_url' => $featured,
                 ]);
             } else {
-                $content = localizeContentImages($db, extractMainContent($html), $sourceHost, $options, $report);
+                $content = localizeContentImages($db, extractMainContent($html), $sourceHost, $options, $report, (string) $url);
                 if ($content === '') {
                     $report['pages']['skipped']++;
                     continue;
