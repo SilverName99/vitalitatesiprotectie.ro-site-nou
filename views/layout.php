@@ -298,6 +298,9 @@ if (trim($designHeaderOutput) !== '' && preg_match($mobileMenuTokenPattern, $des
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <?php $cssVersion = @filemtime(__DIR__ . '/../public/assets/css/app.css') ?: time(); ?>
     <link rel="stylesheet" href="/assets/css/app.css?v=<?= $cssVersion ?><?= $assetVersionQuery ?>">
+    <?php /* Stiluri pentru marcajul temei vechi (clase wk-*) din paginile migrate din WordPress. */ ?>
+    <?php $wkCssVersion = @filemtime(__DIR__ . '/../public/assets/css/wk-compat.css') ?: time(); ?>
+    <link rel="stylesheet" href="/assets/css/wk-compat.css?v=<?= $wkCssVersion ?><?= $assetVersionQuery ?>">
     <?php
     $designCss = trim(implode("\n", array_filter([
         $designHeaderCss,

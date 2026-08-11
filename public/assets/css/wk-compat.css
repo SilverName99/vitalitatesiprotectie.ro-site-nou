@@ -1,0 +1,180 @@
+/*
+ * Compatibilitate pentru conținutul migrat din WordPress.
+ *
+ * Paginile vechi folosesc marcajul temei (clase `wk-*`, echivalente UIkit 3),
+ * al cărui CSS a rămas pe site-ul vechi. Fără el, grilele, cardurile și
+ * butoanele se randau ca text simplu, unul sub altul.
+ *
+ * TOT ce urmează este încapsulat sub `.wk-scope`, containerul pe care îl
+ * generează tema veche în jurul conținutului. Nimic nu se poate scurge în
+ * restul site-ului.
+ *
+ * Puncte de rupere (identice cu UIkit): s=640, m=960, l=1200, xl=1600.
+ */
+
+/* ===== Bază ===== */
+.wk-scope { --wk-accent:#00a9a5; --wk-ink:#1f2a2e; --wk-muted:#5b6a70; --wk-line:#e3eaea; }
+.wk-scope img,
+.wk-scope video,
+.wk-scope iframe { max-width:100%; height:auto; }
+.wk-scope iframe { border:0; }
+.wk-scope table { width:100%; border-collapse:collapse; }
+.wk-scope hr { border:0; border-top:1px solid var(--wk-line); margin:24px 0; }
+
+/* Link-ul care acoperă tot cardul: ascuns intenționat, ca să rămână
+   funcționale titlul, butonul „Citeşte...” și link-urile din text. */
+.wk-scope .wk-position-cover { display:none; }
+.wk-scope .wk-position-z-index { z-index:1; }
+.wk-scope .wk-position-relative { position:relative; }
+.wk-scope .wk-position-absolute { position:absolute; }
+
+/* ===== Grile ===== */
+.wk-scope [wk-grid],
+.wk-scope .wk-grid { display:grid; grid-template-columns:1fr; gap:30px; margin:0 0 30px; }
+.wk-scope .wk-grid-small { gap:15px; }
+.wk-scope .wk-grid-medium { gap:30px; }
+.wk-scope .wk-grid-large { gap:50px; }
+.wk-scope .wk-grid-collapse { gap:0; }
+.wk-scope [wk-grid] > *,
+.wk-scope .wk-grid > * { min-width:0; }
+
+.wk-scope .wk-child-width-1-1 { grid-template-columns:1fr; }
+.wk-scope .wk-child-width-1-2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.wk-scope .wk-child-width-1-3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.wk-scope .wk-child-width-1-4 { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.wk-scope .wk-child-width-1-5 { grid-template-columns:repeat(5,minmax(0,1fr)); }
+.wk-scope .wk-child-width-1-6 { grid-template-columns:repeat(6,minmax(0,1fr)); }
+
+@media (min-width:640px){
+  .wk-scope .wk-child-width-1-1\@s { grid-template-columns:1fr; }
+  .wk-scope .wk-child-width-1-2\@s { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .wk-scope .wk-child-width-1-3\@s { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .wk-scope .wk-child-width-1-4\@s { grid-template-columns:repeat(4,minmax(0,1fr)); }
+}
+@media (min-width:960px){
+  .wk-scope .wk-child-width-1-1\@m { grid-template-columns:1fr; }
+  .wk-scope .wk-child-width-1-2\@m { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .wk-scope .wk-child-width-1-3\@m { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .wk-scope .wk-child-width-1-4\@m { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .wk-scope .wk-child-width-1-5\@m { grid-template-columns:repeat(5,minmax(0,1fr)); }
+  .wk-scope .wk-child-width-1-6\@m { grid-template-columns:repeat(6,minmax(0,1fr)); }
+}
+@media (min-width:1200px){
+  .wk-scope .wk-child-width-1-1\@l { grid-template-columns:1fr; }
+  .wk-scope .wk-child-width-1-2\@l { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .wk-scope .wk-child-width-1-3\@l { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .wk-scope .wk-child-width-1-4\@l { grid-template-columns:repeat(4,minmax(0,1fr)); }
+}
+@media (min-width:1600px){
+  .wk-scope .wk-child-width-1-1\@xl { grid-template-columns:1fr; }
+  .wk-scope .wk-child-width-1-2\@xl { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .wk-scope .wk-child-width-1-3\@xl { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .wk-scope .wk-child-width-1-4\@xl { grid-template-columns:repeat(4,minmax(0,1fr)); }
+}
+
+/* ===== Panouri / carduri ===== */
+.wk-scope .wk-panel,
+.wk-scope .wk-card { position:relative; box-sizing:border-box; }
+.wk-scope .wk-panel,
+.wk-scope .wk-card-default {
+  background:#fff; border:1px solid var(--wk-line); border-radius:10px;
+  padding:24px; height:100%;
+  transition:transform .18s ease, box-shadow .18s ease;
+}
+.wk-scope .wk-panel:hover,
+.wk-scope .wk-card-default:hover { transform:translateY(-3px); box-shadow:0 14px 34px rgba(31,42,46,.10); }
+.wk-scope .wk-card-body { padding:24px; }
+.wk-scope .wk-card-media-top img { border-radius:8px 8px 0 0; display:block; width:100%; }
+.wk-scope .wk-panel > :first-child,
+.wk-scope .wk-card > :first-child { margin-top:0; }
+.wk-scope .wk-panel > :last-child,
+.wk-scope .wk-card > :last-child { margin-bottom:0; }
+
+/* ===== Tipografie ===== */
+.wk-scope .wk-h1,.wk-scope .wk-heading-medium { font-size:clamp(1.8rem,3.6vw,2.4rem); line-height:1.2; font-weight:700; color:var(--wk-ink); }
+.wk-scope .wk-h2 { font-size:clamp(1.5rem,3vw,1.9rem); line-height:1.25; font-weight:700; color:var(--wk-ink); }
+.wk-scope .wk-h3 { font-size:1.25rem; line-height:1.3; font-weight:700; color:var(--wk-ink); }
+.wk-scope .wk-h4 { font-size:1.05rem; line-height:1.35; font-weight:600; color:var(--wk-ink); }
+.wk-scope .wk-text-lead { font-size:1.12rem; line-height:1.6; color:var(--wk-muted); }
+.wk-scope .wk-text-meta,
+.wk-scope .wk-text-small { font-size:.88rem; color:var(--wk-muted); }
+.wk-scope .wk-text-muted { color:var(--wk-muted); }
+.wk-scope .wk-text-left { text-align:left; }
+.wk-scope .wk-text-center { text-align:center; }
+.wk-scope .wk-text-right { text-align:right; }
+.wk-scope .wk-text-justify { text-align:justify; }
+.wk-scope .wk-link-reset,
+.wk-scope .wk-link-reset:hover { color:inherit; text-decoration:none; }
+.wk-scope .wk-h3 .wk-link-reset:hover { color:var(--wk-accent); }
+
+/* ===== Spațiere ===== */
+.wk-scope .wk-margin { margin-top:20px; margin-bottom:20px; }
+.wk-scope .wk-margin-small { margin-top:10px; margin-bottom:10px; }
+.wk-scope .wk-margin-medium { margin-top:40px; margin-bottom:40px; }
+.wk-scope .wk-margin-large { margin-top:70px; margin-bottom:70px; }
+.wk-scope .wk-margin-remove { margin:0; }
+.wk-scope .wk-margin-remove-top { margin-top:0; }
+.wk-scope .wk-margin-remove-bottom { margin-bottom:0; }
+.wk-scope .wk-margin-top { margin-top:20px; }
+.wk-scope .wk-margin-bottom { margin-bottom:20px; }
+.wk-scope .wk-padding { padding:30px; }
+.wk-scope .wk-padding-small { padding:15px; }
+.wk-scope .wk-padding-remove { padding:0; }
+
+/* ===== Butoane ===== */
+.wk-scope .wk-button {
+  display:inline-block; padding:11px 24px; border-radius:999px; border:1.5px solid transparent;
+  font-size:.9rem; font-weight:600; line-height:1.2; text-decoration:none; cursor:pointer;
+  transition:background .18s, color .18s, border-color .18s, transform .18s;
+}
+.wk-scope .wk-button:hover { transform:translateY(-2px); text-decoration:none; }
+.wk-scope .wk-button-default { background:transparent; color:var(--wk-ink); border-color:var(--wk-line); }
+.wk-scope .wk-button-default:hover { background:var(--wk-accent); border-color:var(--wk-accent); color:#fff; }
+.wk-scope .wk-button-primary { background:var(--wk-accent); color:#fff; }
+.wk-scope .wk-button-primary:hover { background:#00807d; }
+.wk-scope .wk-button-secondary { background:var(--wk-ink); color:#fff; }
+.wk-scope .wk-button-text { padding:0; border:0; background:none; color:var(--wk-accent); border-radius:0; }
+.wk-scope .wk-button-small { padding:8px 18px; font-size:.84rem; }
+.wk-scope .wk-button-large { padding:14px 30px; font-size:1rem; }
+
+/* ===== Imagini / tranziții ===== */
+.wk-scope .wk-inline-clip,
+.wk-scope .wk-inline { display:inline-block; position:relative; max-width:100%; overflow:hidden; border-radius:8px; vertical-align:middle; }
+.wk-scope .wk-transition-toggle { position:relative; }
+.wk-scope .wk-transition-scale-up { transition:transform .35s ease; }
+.wk-scope .wk-transition-toggle:hover .wk-transition-scale-up { transform:scale(1.06); }
+.wk-scope .wk-transition-opaque { opacity:1; }
+.wk-scope .wk-border-circle { border-radius:50%; }
+.wk-scope .wk-border-rounded { border-radius:8px; }
+.wk-scope .wk-box-shadow-small { box-shadow:0 4px 10px rgba(31,42,46,.08); }
+.wk-scope .wk-box-shadow-medium { box-shadow:0 10px 24px rgba(31,42,46,.10); }
+
+/* Animațiile de scroll din tema veche cereau JS; conținutul rămâne mereu vizibil. */
+.wk-scope [wk-scrollspy],
+.wk-scope [wk-scrollspy] > * { opacity:1 !important; transform:none !important; }
+
+/* ===== Utilitare de așezare ===== */
+.wk-scope .wk-flex { display:flex; }
+.wk-scope .wk-flex-middle { align-items:center; }
+.wk-scope .wk-flex-center { justify-content:center; }
+.wk-scope .wk-flex-between { justify-content:space-between; }
+.wk-scope .wk-width-1-1 { width:100%; }
+.wk-scope .wk-width-1-2 { width:50%; }
+.wk-scope .wk-width-expand { flex:1; }
+.wk-scope .wk-container { max-width:1200px; margin:0 auto; }
+.wk-scope .wk-section { padding:40px 0; }
+.wk-scope .wk-overflow-auto { overflow:auto; }
+.wk-scope .wk-position-relative { position:relative; }
+
+/* ===== Liste și tabele ===== */
+.wk-scope .wk-list { list-style:none; padding:0; }
+.wk-scope .wk-list > li { margin-bottom:10px; }
+.wk-scope .wk-list-divider > li + li { border-top:1px solid var(--wk-line); padding-top:10px; }
+.wk-scope .wk-table th,
+.wk-scope .wk-table td { padding:10px 12px; border-bottom:1px solid var(--wk-line); text-align:left; }
+.wk-scope .wk-table th { font-weight:600; color:var(--wk-ink); }
+
+/* ===== Vizibilitate pe puncte de rupere ===== */
+@media (max-width:639px){ .wk-scope .wk-visible\@s,.wk-scope .wk-visible\@m,.wk-scope .wk-visible\@l { display:none !important; } }
+@media (max-width:959px){ .wk-scope .wk-visible\@m,.wk-scope .wk-visible\@l { display:none !important; } }
+@media (min-width:960px){ .wk-scope .wk-hidden\@m { display:none !important; } }
