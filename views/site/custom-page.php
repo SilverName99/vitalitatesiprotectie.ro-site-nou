@@ -106,6 +106,10 @@ if ($showPageSidebar) {
     if ($sidebarSlugs !== [] && !in_array($pageSlug, $sidebarSlugs, true)) {
         $showPageSidebar = false;
     }
+    // Pagina principală rămâne mereu pe lățime completă, indiferent de listă.
+    if (in_array(mb_strtolower($pageSlug), ['', 'acasa', 'acasă', 'home'], true)) {
+        $showPageSidebar = false;
+    }
 }
 ?>
 <?php if ($showPageSidebar): ?>
