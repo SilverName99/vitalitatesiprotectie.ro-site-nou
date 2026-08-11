@@ -341,18 +341,45 @@ function httpGetJson(string $url): ?array
 }
 
 /** Iterează un endpoint WP REST paginat și întoarce toate elementele. */
-function fetchAllPaginated(string $baseUrl, int $limit): array
+/**
+ * Iterează un endpoint WP REST paginat.
+ *
+ * Distinge explicit între „nu mai sunt rezultate” (HTTP 400, cum răspunde
+ * WordPress la o pagină inexistentă) și „cererea a eșuat”. Înainte, orice
+ * eșec era tratat ca sfârșit de listă, iar migrarea raporta tăcut zero
+ * rezultate — exact ce s-a întâmplat la articolele cerute cu `_embed=1`,
+ * unde răspunsul de 100 de articole depășea timeout-ul.
+ */
+function fetchAllPaginated(string $baseUrl, int $limit, int $perPage = 100, int $timeout = 60): array
 {
     $all = [];
-    $perPage = 100;
-    for ($page = 1; $page <= 200; $page++) {
-        $sep = str_contains($baseUrl, '?') ? '&' : '?';
-        $batch = httpGetJson("{$baseUrl}{$sep}per_page={$perPage}&page={$page}");
-        if (!is_array($batch) || $batch === [] || isset($batch['code'])) {
+    $sep = str_contains($baseUrl, '?') ? '&' : '?';
+    $perPage = max(1, min(100, $perPage));
+
+    for ($page = 1; $page <= 500; $page++) {
+        $status = 0;
+        $body = httpGet("{$baseUrl}{$sep}per_page={$perPage}&page={$page}", $timeout, 2, $status);
+
+        if ($body === null) {
+            // Pagina inexistentă = am terminat lista.
+            if ($status === 400) {
+                break;
+            }
+            // Prima pagină prea grea: reîncearcă în loturi mai mici. Doar aici,
+            // fiindcă schimbarea dimensiunii după ce am citit deja pagini ar
+            // decala numerotarea și ar sări peste rezultate.
+            if ($all === [] && $perPage > 10) {
+                $perPage = max(10, (int) floor($perPage / 4));
+                echo "   [!] Răspuns prea greu sau prea lent; reiau cu loturi de {$perPage}.\n";
+                $page--;
+                continue;
+            }
+            echo "   [!] Pagina {$page} nu a putut fi citită (HTTP {$status}). Lista poate fi incompletă.\n";
             break;
         }
-        // Unele API-uri întorc obiect asociativ la eroare; ne asigurăm că e listă.
-        if (array_is_list($batch) === false) {
+
+        $batch = json_decode($body, true);
+        if (!is_array($batch) || $batch === [] || isset($batch['code']) || !array_is_list($batch)) {
             break;
         }
         foreach ($batch as $item) {
@@ -934,7 +961,8 @@ function migratePostsViaApi(PDO $db, string $source, array $options, array &$rep
     // Pasul cel mai lent: `_embed=1` aduce autorul, imaginea și taxonomiile
     // pentru fiecare articol, deci răspunsul poate fi de câțiva MB per pagină.
     echo "   Se descarcă lista de articole (poate dura un minut)...\n";
-    $posts = fetchAllPaginated($source . '/wp-json/wp/v2/posts?status=publish&_embed=1', $options['limit']);
+    // Loturi mici și timeout generos: `_embed=1` face răspunsul de câțiva MB.
+    $posts = fetchAllPaginated($source . '/wp-json/wp/v2/posts?status=publish&_embed=1', $options['limit'], 20, 120);
     echo '   ' . count($posts) . " articole găsite.\n";
 
     foreach ($posts as $post) {
