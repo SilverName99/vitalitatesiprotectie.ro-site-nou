@@ -242,9 +242,17 @@ function ensureMigrationSchema(PDO $db): void
 // HTTP helpers
 // ---------------------------------------------------------------------------
 
-function httpGet(string $url, int $timeout = 30, int $retries = 3): ?string
+/**
+ * @param int|null $lastStatus Codul HTTP al ultimei încercări (0 = eroare de rețea/timeout).
+ */
+function httpGet(string $url, int $timeout = 30, int $retries = 3, ?int &$lastStatus = null): ?string
 {
+    global $lastHttpError;
+
     $ua = 'Mozilla/5.0 (compatible; MigrareSite/1.0; +https://example.org)';
+    $lastStatus = 0;
+    $lastHttpError = '';
+
     for ($attempt = 1; $attempt <= $retries; $attempt++) {
         if (function_exists('curl_init')) {
             $ch = curl_init($url);
@@ -259,12 +267,19 @@ function httpGet(string $url, int $timeout = 30, int $retries = 3): ?string
             ]);
             $body = curl_exec($ch);
             $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+            $curlError = curl_error($ch);
             curl_close($ch);
+            $lastStatus = $status;
+            if ($curlError !== '') {
+                $lastHttpError = $curlError;
+            }
             if (is_string($body) && $status >= 200 && $status < 300) {
                 return $body;
             }
-            if ($status >= 400 && $status < 500 && $status !== 429) {
-                return null; // eroare definitivă (404 etc.), nu reîncerca
+            // 404/410 etc. = definitiv lipsă, nu reîncerca. 403/429 pot fi
+            // blocaje temporare de firewall/rate-limit, deci merită reîncercate.
+            if ($status >= 400 && $status < 500 && !in_array($status, [403, 408, 429], true)) {
+                return null;
             }
         } else {
             $ctx = stream_context_create([
@@ -281,6 +296,26 @@ function httpGet(string $url, int $timeout = 30, int $retries = 3): ?string
         }
     }
     return null;
+}
+
+/** Notează în storage/logs/migrate-images-failed.log imaginile care nu au putut fi descărcate. */
+function logImageFailure(string $url, int $status): void
+{
+    global $lastHttpError;
+
+    $dir = __DIR__ . '/../storage/logs';
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0775, true);
+    }
+    $reason = $status > 0
+        ? 'HTTP ' . $status
+        : 'retea/timeout: ' . (is_string($lastHttpError) && $lastHttpError !== '' ? $lastHttpError : 'necunoscut');
+
+    @file_put_contents(
+        $dir . '/migrate-images-failed.log',
+        date('Y-m-d H:i:s') . " | {$reason} | {$url}\n",
+        FILE_APPEND
+    );
 }
 
 function httpGetJson(string $url): ?array
@@ -395,13 +430,16 @@ function localizeImage(PDO $db, string $url, array $options, array &$report, str
     $localUrl = '/uploads/migrated/' . $filename;
 
     if (!is_file($target)) {
-        $data = httpGet($url, 60);
+        $status = 0;
+        $data = httpGet($url, 60, 3, $status);
         if ($data === null || $data === '') {
             $report['images']['errors']++;
+            logImageFailure($url, $status);
             return $cache[$url] = $url;
         }
         if (file_put_contents($target, $data) === false) {
             $report['images']['errors']++;
+            logImageFailure($url, -1);
             return $cache[$url] = $url;
         }
         $report['images']['downloaded']++;
