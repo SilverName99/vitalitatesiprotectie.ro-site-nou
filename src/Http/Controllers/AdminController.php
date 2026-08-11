@@ -13174,10 +13174,13 @@ HTML;
     {
         $activeCategory = trim((string) ($_GET['categorie'] ?? $_GET['category'] ?? ''));
         $sort = $this->shopCatalogSortPreview();
-        [$products] = $this->loadShopPreviewProducts($db, $activeCategory, $sort);
+        // loadShopPreviewProducts() întoarce direct lista de produse, nu un tuplu:
+        // destructurarea `[$products] = ...` lua primul produs, iar pe un site
+        // fără produse dădea null -> TypeError -> 500 în editorul de pagini.
+        $products = $this->loadShopPreviewProducts($db, $activeCategory, $sort);
         $categories = $this->loadShopPreviewCategories($db);
         if ($categories === []) {
-            [$fallbackProducts] = $this->loadShopPreviewProducts($db, '', 'featured');
+            $fallbackProducts = $this->loadShopPreviewProducts($db, '', 'featured');
             $categories = $this->buildShopPreviewCategoriesFromProducts($fallbackProducts);
         }
         return $this->renderPartialPhpView('site/components/shop-catalog', [
@@ -13504,7 +13507,8 @@ HTML;
         $safeLimit = max(1, min(24, $limit));
         try {
             $stmt = $db->prepare(
-                'SELECT p.id, p.title, p.slug, p.excerpt, p.reading_minutes, p.published_at, p.cover_image_url,
+                'SELECT p.id, p.title, p.slug, p.excerpt, p.reading_minutes, p.published_at,
+                        p.featured_image_url AS cover_image_url,
                         COALESCE(a.name, "") AS author_name
                  FROM blog_posts p
                  LEFT JOIN blog_authors a ON a.id = p.author_id
