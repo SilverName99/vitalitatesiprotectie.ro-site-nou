@@ -861,6 +861,10 @@ if (trim($designHeaderOutput) !== '' && preg_match($mobileMenuTokenPattern, $des
         </header>
     <?php endif; ?>
 
+    <?php /* Sertarul de oferte apare doar când există efectiv oferte active;
+             altfel afișa un panou gol pe fiecare pagină, inclusiv pe site-urile
+             de prezentare care nu folosesc magazinul. */ ?>
+    <?php if ($bbdSidebarOffers !== []): ?>
     <aside class="bv-bbd-sidebar" data-bv-bbd-sidebar>
         <button
             class="bv-bbd-sidebar__handle"
@@ -878,17 +882,6 @@ if (trim($designHeaderOutput) !== '' && preg_match($mobileMenuTokenPattern, $des
                 <button type="button" class="bv-bbd-sidebar__close" data-bv-bbd-sidebar-close aria-label="Închide panoul">×</button>
             </div>
             <ul class="bv-bbd-sidebar__list">
-                <?php if ($bbdSidebarOffers === []): ?>
-                    <li>
-                        <a class="bv-bbd-sidebar__item" href="/magazin">
-                            <img src="/assets/img/product-placeholder.svg" alt="Produse" loading="lazy">
-                            <div>
-                                <h4 class="bv-bbd-sidebar__item-name">Momentan nu sunt oferte disponibile</h4>
-                                <p class="bv-bbd-sidebar__item-label">Verifică produsele din magazin pentru oferte active.</p>
-                            </div>
-                        </a>
-                    </li>
-                <?php else: ?>
                     <?php foreach ($bbdSidebarOffers as $offer): ?>
                         <?php
                         $offerName = trim((string) ($offer['name'] ?? 'Produs'));
@@ -916,10 +909,10 @@ if (trim($designHeaderOutput) !== '' && preg_match($mobileMenuTokenPattern, $des
                             </a>
                         </li>
                     <?php endforeach; ?>
-                <?php endif; ?>
             </ul>
         </div>
     </aside>
+    <?php endif; ?>
 
     <main class="container site-container">
         <?php if (($message = \App\Support\Flash::get('success')) !== null): ?>
