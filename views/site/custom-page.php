@@ -154,7 +154,7 @@ $pageHtml = (string) preg_replace_callback(
 <style>
     .page-with-sidebar{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:34px;align-items:start;}
     .page-with-sidebar > .custom-page-content{min-width:0;}
-    .page-sidebar{position:sticky;top:20px;}
+    .page-sidebar{position:static;}
     .page-sidebar .ps-box{background:#fff;border-radius:10px;padding:20px 24px 8px;margin-bottom:24px;
         box-shadow:0 6px 22px rgba(31,42,46,.06);}
     .page-sidebar .ps-box h3{margin:0 0 6px;font-size:1.3rem;font-weight:600;color:#00a9a5;line-height:1.3;}
@@ -164,12 +164,16 @@ $pageHtml = (string) preg_replace_callback(
         font-weight:600;font-size:.95rem;line-height:1.35;transition:color .16s;}
     .page-sidebar .ps-box a:hover,
     .page-sidebar .ps-box a.is-current{color:#00a9a5;}
-    .page-sidebar .blog-tags{display:flex;flex-wrap:wrap;gap:8px;padding:4px 0 16px;}
-    .page-sidebar .blog-tags__item{display:inline-block;padding:7px 12px;border-radius:4px;
-        background:#3a4145;color:#f1f4f4;font-size:.83rem;font-weight:500;line-height:1.2;
-        text-decoration:none;transition:background .16s;}
-    .page-sidebar .blog-tags__item:hover{background:#00a9a5;}
-    .page-sidebar .blog-tags__item.is-active{background:#00a9a5;}
+    .page-sidebar .blog-tags{display:flex;flex-wrap:wrap;gap:6px;padding:4px 0 16px;}
+    /* flex-shrink:0 este esențial: fără el chip-urile se strâng sub lățimea
+       textului, iar etichetele lungi ies din casetă. */
+    .page-sidebar .blog-tags__item{flex:0 0 auto;max-width:100%;
+        display:inline-block;padding:5px 9px;border-radius:3px;
+        background:#3a4145;color:#f1f4f4 !important;font-size:.74rem;font-weight:500;
+        line-height:1.35;text-decoration:none;transition:background .16s;
+        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .page-sidebar .blog-tags__item:hover,
+    .page-sidebar .blog-tags__item.is-active{background:#00a9a5;color:#fff !important;}
     .page-sidebar .blog-recent{list-style:none;margin:0;padding:0;}
     .page-sidebar .blog-recent li + li{border-top:1px solid #e8eded;}
     .page-sidebar .blog-recent a{display:block;padding:11px 0;color:#2b3a40;
@@ -177,7 +181,6 @@ $pageHtml = (string) preg_replace_callback(
     .page-sidebar .blog-recent a:hover{color:#00a9a5;}
     @media (max-width:900px){
         .page-with-sidebar{grid-template-columns:1fr;}
-        .page-sidebar{position:static;}
     }
 </style>
 <script>
