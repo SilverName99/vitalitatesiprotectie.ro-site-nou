@@ -931,6 +931,9 @@ function migratePostsViaApi(PDO $db, string $source, array $options, array &$rep
     }
     echo '   ' . count($wpTagMap) . " etichete sincronizate.\n";
 
+    // Pasul cel mai lent: `_embed=1` aduce autorul, imaginea și taxonomiile
+    // pentru fiecare articol, deci răspunsul poate fi de câțiva MB per pagină.
+    echo "   Se descarcă lista de articole (poate dura un minut)...\n";
     $posts = fetchAllPaginated($source . '/wp-json/wp/v2/posts?status=publish&_embed=1', $options['limit']);
     echo '   ' . count($posts) . " articole găsite.\n";
 
