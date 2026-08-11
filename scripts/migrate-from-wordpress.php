@@ -728,6 +728,20 @@ function upsertBlogCategory(PDO $db, string $name, string $slug): int
     return (int) $db->lastInsertId();
 }
 
+/** Prima imagine dintr-un conținut HTML deja localizat (sau '' dacă nu există). */
+function firstContentImage(string $html): string
+{
+    if ($html === '' || !preg_match('~<img[^>]+src="([^"]+)"~i', $html, $m)) {
+        return '';
+    }
+    $src = trim(html_entity_decode($m[1], ENT_QUOTES));
+    // Ignorăm imaginile inline base64 și pixelii de urmărire.
+    if ($src === '' || str_starts_with($src, 'data:')) {
+        return '';
+    }
+    return mb_substr($src, 0, 255);
+}
+
 function upsertBlogTag(PDO $db, string $name, string $slug): int
 {
     $stmt = $db->prepare('SELECT id FROM blog_tags WHERE slug = :slug LIMIT 1');
@@ -993,6 +1007,11 @@ function migratePostsViaApi(PDO $db, string $source, array $options, array &$rep
             $media = $embedded['wp:featured_media'][0] ?? null;
             if (is_array($media) && !empty($media['source_url'])) {
                 $featured = localizeImage($db, (string) $media['source_url'], $options, $report, $title);
+            }
+            // Multe site-uri nu setează „featured image” în WordPress, iar tema
+            // folosea prima imagine din articol ca miniatură. Facem la fel.
+            if ($featured === '') {
+                $featured = firstContentImage($content);
             }
 
             $categoryIds = [];
