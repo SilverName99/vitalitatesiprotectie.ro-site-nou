@@ -112,13 +112,23 @@ rm -f .user.ini php-errors.log public/_debug.php
 
 ### Redirecționări pentru adresele vechi
 
-Structura adreselor diferă: articolele erau la `/nume-articol/`, acum sunt la
-`/blog/nume-articol`. Fără redirecționări, linkurile din Google și cele
-distribuite pe rețele sociale duc la 404, iar poziționarea în căutări scade.
+**Se fac automat.** Când o adresă veche nu corespunde niciunei rute, aplicația
+caută slug-ul între pagini și articole și trimite un redirect permanent (301)
+către adresa nouă. Acoperă articolele mutate sub `/blog/`, prefixele vechi de
+secțiune, arhivele de categorie și etichetă, arhivele de autor, precum și
+variantele WordPress `/feed`, `/amp`, `/page/2`.
 
-- [ ] Listă cu cele mai vizitate adrese vechi (din Google Search Console sau
-      Analytics, **exportată înainte** de a pierde accesul la site-ul vechi)
-- [ ] Redirecționări 301 adăugate în `.htaccess`
+Verifică după comutare câteva adrese vechi reprezentative:
+
+```bash
+for u in "/nume-articol-vechi/" "/category/nutritie/" "/tag/cancer/"; do
+  echo "$(curl -s -o /dev/null -w '%{http_code} -> %{redirect_url}' "https://vitalitatesiprotectie.ro$u")  $u"
+done
+```
+
+- [ ] Adrese vechi testate, răspund cu `301` și duc unde trebuie
+- [ ] Export din Google Search Console cu adresele care aduc trafic, pentru
+      a verifica dacă vreuna rămâne la 404
 
 ### Motoare de căutare
 

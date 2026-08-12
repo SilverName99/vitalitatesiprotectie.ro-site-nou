@@ -8,6 +8,18 @@ final class Router
 {
     private array $routes = [];
 
+    /** @var callable(string):void|null */
+    private $notFoundHandler = null;
+
+    /**
+     * Ce se întâmplă când nicio rută nu se potrivește. Folosit pentru
+     * redirecționarea adreselor vechi înainte de a răspunde 404.
+     */
+    public function setNotFoundHandler(callable $handler): void
+    {
+        $this->notFoundHandler = $handler;
+    }
+
     public function get(string $pattern, callable|array $handler): void
     {
         $this->addRoute('GET', $pattern, $handler);
@@ -61,6 +73,11 @@ final class Router
             } else {
                 $handler($params);
             }
+            return;
+        }
+
+        if ($this->notFoundHandler !== null) {
+            ($this->notFoundHandler)($path);
             return;
         }
 

@@ -286,5 +286,22 @@ $router->post('/admin/design/save', [AdminController::class, 'designSiteSave']);
 
 $router->get('/{slug*}', [SiteController::class, 'customPage']);
 
+// Adresele vechi de WordPress: redirecționate permanent către noile căi,
+// doar când nicio rută nu s-a potrivit.
+$router->setNotFoundHandler(static function (string $path): void {
+    $legacyConfig = require __DIR__ . '/../config/app.php';
+    $target = App\Support\LegacyRedirects::resolve(
+        App\Support\Database::connection((array) ($legacyConfig['db'] ?? [])),
+        $path
+    );
+    if ($target !== null && $target !== $path) {
+        header('Location: ' . $target, true, 301);
+        return;
+    }
+
+    http_response_code(404);
+    echo 'Pagina nu a fost găsită.';
+});
+
 $router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
 ResponseCache::finishRequest($pageCacheContext);
