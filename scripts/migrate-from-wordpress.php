@@ -669,8 +669,14 @@ function localizeContentImages(
     if (trim($html) === '') {
         return $html;
     }
-    $html = (string) preg_replace('~\s+(srcset|sizes)="[^"]*"~i', '', $html);
-    return (string) preg_replace_callback(
+    // preg_* întoarce null când depășește limitele de backtracking (conținut
+    // foarte mare). Turnat direct în string, ar goli tăcut articolul, așa că
+    // păstrăm varianta anterioară la eșec.
+    $stripped = preg_replace('~\s+(srcset|sizes)="[^"]*"~i', '', $html);
+    if (is_string($stripped)) {
+        $html = $stripped;
+    }
+    $localized = preg_replace_callback(
         '~(<img[^>]+src=")([^"]+)(")~i',
         static function (array $m) use ($db, $sourceHost, $options, &$report, $baseUrl): string {
             // Acceptă orice formă: absolută, `/root`, `relativa/`, `../parinte/`.
@@ -686,6 +692,8 @@ function localizeContentImages(
         },
         $html
     );
+
+    return is_string($localized) ? $localized : $html;
 }
 
 // ---------------------------------------------------------------------------
